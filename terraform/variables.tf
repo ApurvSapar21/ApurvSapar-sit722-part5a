@@ -1,19 +1,20 @@
-# Sets global variables for this Terraform project.
+# Define variables
+variable "location" {
+  default     = "australiasoutheast"
+}
 
-variable "resource_group_name" {
-  description = "Name of the Azure resource group"
-  type        = string
-  default     = "deakinuni-rg"
+variable "container_registry_name" {
+  default     = "sit722projectpart5"
+}
+
+variable "kubernetes_cluster_name" {
+  default     = "sit722projectpart5"
 }
 
 variable app_name {
-  default ="sit722week9apurvsapar"
+  default = "projectpart5"
 }
 
-variable location {
-  default = "eastus"
-}
-
-variable kubernetes_version {  
-  default = "1.30.3"  
+variable kubernetes_version {
+  default = "1.30.2"
 }
