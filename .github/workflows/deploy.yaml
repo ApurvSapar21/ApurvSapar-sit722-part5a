@@ -45,50 +45,60 @@ jobs:
         run: terraform import azurerm_resource_group.deakinuni /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg
         working-directory: ./terraform
 
-      # Step 6: Terraform Plan
+      # Step 6: Import existing container registry
+      - name: Import existing container registry
+        run: terraform import azurerm_container_registry.container_registry /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg/providers/Microsoft.ContainerRegistry/registries/projectpart5
+        working-directory: ./terraform
+
+      # Step 7: Import existing Kubernetes cluster
+      - name: Import existing Kubernetes cluster
+        run: terraform import azurerm_kubernetes_cluster.cluster /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg/providers/Microsoft.ContainerService/managedClusters/projectpart5
+        working-directory: ./terraform
+
+      # Step 8: Terraform Plan
       - name: Terraform Plan
         run: terraform plan
         working-directory: ./terraform
 
-      # Step 7: Terraform Apply
+      # Step 9: Terraform Apply
       - name: Terraform Apply
         run: terraform apply -auto-approve
         working-directory: ./terraform
 
-      # Step 8: Log in to Azure Container Registry
+      # Step 10: Log in to Azure Container Registry
       - name: Log in to Azure Container Registry
         run: |
           az acr login --name ${{ env.REGISTRY_NAME }}
 
-      # Step 9: Build Docker images
+      # Step 11: Build Docker images
       - name: Build Docker images
         run: |
           chmod +x ./scripts/build-image.sh
           ./scripts/build-image.sh
 
-      # Step 10: Publish the Docker images to the container registry
+      # Step 12: Publish the Docker images to the container registry
       - name: Push Docker images to Container Registry
         run: |
           chmod +x ./scripts/push-image.sh
           ./scripts/push-image.sh
 
-      # Step 11: Installs Kubectl and connects it to the cluster
+      # Step 13: Installs Kubectl and connects it to the cluster
       - uses: azure/aks-set-context@v3
         with:
           resource-group: 'projectpart5'
           cluster-name: '${{ secrets.AKS_CLUSTER_NAME }}'
       
-      # Step 12: Substitute environment variables in the deployment file
+      # Step 14: Substitute environment variables in the deployment file
       - name: Substitute environment variables
         run: envsubst < scripts/kubernetes/deployment.yaml > scripts/kubernetes/deployment-withenv.yaml
 
-      # Step 13: Deploy to AKS
+      # Step 15: Deploy to AKS
       - name: Deploy to AKS
         run: |
           chmod +x ./scripts/deploy.sh
           ./scripts/deploy.sh "${{ env.CONTAINER_REGISTRY }}" "${{ env.VERSION }}"
 
-      # Step 14: Assign role to the service principal
+      # Step 16: Assign role to the service principal
       - name: Assign Role to Service Principal
         run: |
           az role assignment create --assignee ${{ secrets.SP_APP_ID }} --role "User Access Administrator" --scope /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg
