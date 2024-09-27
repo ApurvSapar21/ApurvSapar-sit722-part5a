@@ -8,6 +8,7 @@ on:
   workflow_dispatch: 
 
 jobs:
+
   deploy:
     runs-on: ubuntu-latest
     
@@ -15,90 +16,68 @@ jobs:
       VERSION: ${{ github.sha }}
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       REGISTRY_UN: ${{ secrets.REGISTRY_UN }}
-      REGISTRY_PW: ${{ secrets.REGISTRY_PW }}
+      REGISTRY_PW: ${{ secrets.REGISTRY_PW  }}
       REGISTRY_NAME: ${{ secrets.REGISTRY_NAME }}
-      SP_APP_ID: ${{ secrets.SP_APP_ID }}  # Service Principal App ID
 
     steps:
       
-      # Step 1: Checks out your repository
+      # Step1: Checks-out your repository under 
       - uses: actions/checkout@v3
 
-      # Step 2: Login to Azure
+      #Step 2: Login to Azure
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 3: Set up Terraform
+      # Step3: Set up Terraform
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.0
 
-      # Step 4: Terraform init
+      # Step4: Terraform 
       - name: Terraform init
         run: terraform init
         working-directory: ./terraform
 
-      # Step 5: Import existing resource group
-      - name: Import existing resource group
-        run: terraform import azurerm_resource_group.deakinuni /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg
-        working-directory: ./terraform
-
-      # Step 6: Import existing container registry
-      - name: Import existing container registry
-        run: terraform import azurerm_container_registry.container_registry /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg/providers/Microsoft.ContainerRegistry/registries/projectpart5
-        working-directory: ./terraform
-
-      # Step 7: Import existing Kubernetes cluster
-      - name: Import existing Kubernetes cluster
-        run: terraform import azurerm_kubernetes_cluster.cluster /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg/providers/Microsoft.ContainerService/managedClusters/projectpart5
-        working-directory: ./terraform
-
-      # Step 8: Terraform Plan
       - name: Terraform Plan
         run: terraform plan
         working-directory: ./terraform
 
-      # Step 9: Terraform Apply
       - name: Terraform Apply
         run: terraform apply -auto-approve
         working-directory: ./terraform
 
-      # Step 10: Log in to Azure Container Registry
+      # Step5: Log in to Azure Container Registry
       - name: Log in to Azure Container Registry
         run: |
           az acr login --name ${{ env.REGISTRY_NAME }}
 
-      # Step 11: Build Docker images
+
+      # Step6: Builds the Docker image.
       - name: Build Docker images
         run: |
           chmod +x ./scripts/build-image.sh
           ./scripts/build-image.sh
 
-      # Step 12: Publish the Docker images to the container registry
+      # Step7: Publish the Docker images to the container registry
       - name: Push Docker images to Container Registry
         run: |
           chmod +x ./scripts/push-image.sh
           ./scripts/push-image.sh
 
-      # Step 13: Installs Kubectl and connects it to the cluster
+      # Step8: Installs Kubectl and connects it to the cluster
       - uses: azure/aks-set-context@v3
         with:
           resource-group: 'projectpart5'
           cluster-name: '${{ secrets.AKS_CLUSTER_NAME }}'
       
-      # Step 14: Substitute environment variables in the deployment file
-      - name: Substitute environment variables
+      # Step9: Substitute environment variables in the deployment file
+      - name: substitute environment variables
         run: envsubst < scripts/kubernetes/deployment.yaml > scripts/kubernetes/deployment-withenv.yaml
 
-      # Step 15: Deploy to AKS
+      # Step 10: Deploy to AKS
       - name: Deploy to AKS
         run: |
           chmod +x ./scripts/deploy.sh
           ./scripts/deploy.sh "${{ env.CONTAINER_REGISTRY }}" "${{ env.VERSION }}"
-
-      # Step 16: Assign role to the service principal
-      - name: Assign Role to Service Principal
-        run: |
-          az role assignment create --assignee ${{ secrets.SP_APP_ID }} --role "User Access Administrator" --scope /subscriptions/139404b5-6651-4f3f-81b5-1bdc19aa8af3/resourceGroups/deakinuni-rg

@@ -1,5 +1,6 @@
-# Resource Group Definition
+#resource-group
+
 resource "azurerm_resource_group" "deakinuni" {
-  name     = var.resource_group_name
+  name     = var.app_name
   location = var.location
 }
